@@ -2080,13 +2080,13 @@ struct cpsw_slave_data cpsw_slaves[] = {
 	{
 		.slave_reg_ofs  = 0x50,
 		.sliver_reg_ofs = 0x700,
-		.phy_id		= "0:00",
+		.phy_id		= "0:07",
 		.dual_emac_reserved_vlan = CPSW_PORT_VLAN_SLAVE_0,
 	},
 	{
 		.slave_reg_ofs  = 0x90,
 		.sliver_reg_ofs = 0x740,
-		.phy_id		= "0:01",
+		.phy_id		= "0:06",
 		.dual_emac_reserved_vlan = CPSW_PORT_VLAN_SLAVE_1,
 	},
 };
@@ -2106,7 +2106,7 @@ static struct cpsw_platform_data ti814x_cpsw_pdata = {
 	.bd_ram_size		= SZ_8K,
 	.rx_descs               = 64,
 	.mac_control            = BIT(5), /* MIIEN */
-	.gigabit_en		= 1,
+	.gigabit_en		= 0,
 	.host_port_num		= 0,
 	.no_bd_ram		= false,
 };
@@ -2228,15 +2228,6 @@ void ti814x_cpsw_init(void)
 	cpsw_slaves[1].mac_addr[4] = mac_lo & 0xFF;
 	cpsw_slaves[1].mac_addr[5] = (mac_lo & 0xFF00) >> 8;
 	memcpy(ti814x_cpsw_pdata.mac_addr, cpsw_slaves[0].mac_addr, ETH_ALEN);
-#if 0
-	ti814x_cpsw_mux();
-#endif
-	if (omap_rev() == TI8148_REV_ES1_0)
-		cpsw_slaves[0].phy_id = "0:01";
-	else {
-		cpsw_slaves[0].phy_id = "0:00";
-		cpsw_slaves[1].phy_id = "0:01";
-	}
 
 	platform_device_register(&cpsw_mdio_device);
 	platform_device_register(&ti814x_cpsw_device);
