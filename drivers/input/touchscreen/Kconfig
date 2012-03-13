@@ -692,4 +692,17 @@ config TOUCHSCREEN_STMPE
 	  To compile this driver as a module, choose M here: the
 	  module will be called stmpe-ts.
 
+config TOUCHSCREEN_PIXCIR
+       tristate "PIXCIR I2C touchscreens"
+       depends on I2C
+       help
+         Say Y here if you have a pixcir i2c touchscreen
+         controller.
+
+         If unsure, say N.
+
+         To compile this driver as a module, choose M here: the
+         module will be called pixcir_i2c_ts.
+
+
 endif

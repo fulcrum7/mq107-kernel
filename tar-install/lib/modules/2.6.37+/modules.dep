@@ -1,0 +1,16 @@
+kernel/crypto/aes_generic.ko:
+kernel/drivers/video/ti81xx/vpss/vpss.ko:
+kernel/drivers/video/ti81xx/ti81xxfb/ti81xxfb.ko: kernel/drivers/video/ti81xx/vpss/vpss.ko
+kernel/drivers/video/ti81xx/ti81xxhdmi/ti81xxhdmi.ko: kernel/drivers/video/ti81xx/vpss/vpss.ko
+kernel/drivers/video/ti81xx/tlc59108/tlc59108.ko:
+kernel/drivers/scsi/scsi_wait_scan.ko:
+kernel/drivers/media/video/tvp7002.ko:
+kernel/drivers/media/video/ti81xx/ti81xxvo.ko: kernel/drivers/video/ti81xx/vpss/vpss.ko
+kernel/drivers/media/video/ti81xx/ti81xxvin.ko: kernel/drivers/video/ti81xx/vpss/vpss.ko
+kernel/drivers/ssb/ssb.ko:
+kernel/net/ipv4/tunnel4.ko:
+kernel/net/ipv6/ipv6.ko:
+kernel/net/ipv6/xfrm6_mode_transport.ko:
+kernel/net/ipv6/xfrm6_mode_tunnel.ko: kernel/net/ipv6/ipv6.ko
+kernel/net/ipv6/xfrm6_mode_beet.ko: kernel/net/ipv6/ipv6.ko
+kernel/net/ipv6/sit.ko: kernel/net/ipv4/tunnel4.ko kernel/net/ipv6/ipv6.ko

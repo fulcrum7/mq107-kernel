@@ -1,0 +1,9 @@
+# Aliases extracted from modules themselves.
+alias aes aes_generic
+alias i2c:tlc59108 tlc59108
+alias i2c:tvp7002 tvp7002
+alias net-pf-10 ipv6
+alias xfrm-mode-10-0 xfrm6_mode_transport
+alias xfrm-mode-10-1 xfrm6_mode_tunnel
+alias xfrm-mode-10-4 xfrm6_mode_beet
+alias sit0 sit

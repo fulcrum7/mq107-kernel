@@ -105,6 +105,8 @@ static struct i2c_board_info __initdata ti814x_i2c_boardinfo1[] = {
 
 };
 
+
+
 #define VPS_VC_IO_EXP_RESET_DEV_MASK        (0x0Fu)
 #define VPS_VC_IO_EXP_SEL_VIN0_S1_MASK      (0x04u)
 #define VPS_VC_IO_EXP_THS7368_DISABLE_MASK  (0x10u)
@@ -498,6 +500,73 @@ static void __init ti814x_tsc_init(void)
 	gpio_export(31, true);
 }
 
+
+
+
+
+
+/* Touchscreen platform data */
+
+#include <../../../drivers/input/touchscreen/pixcir_i2c_ts.h>
+
+#define GPIO_TSC               31
+#define GPIO_TSC_ATT	        1
+#define GPIO_TSC_RST	        2
+#define GPIO_TSC_INT	        1
+
+static struct pixcir_i2c_ts_platform pixcir_platform_data = {
+	.ts_x_max	  = 800,				//FIXME
+	.ts_y_max	  = 480,				//FIXME
+};
+
+static struct i2c_board_info __initdata ti814x_i2c_boardinfo4[] = {
+
+
+	{
+		 I2C_BOARD_INFO("pixcir_ts", 0x5c),
+		 .platform_data = &pixcir_platform_data,
+	},
+
+
+};
+
+static void __init pixcir_tsc_init(void)
+{
+	int error;
+	/*
+	*	Tune clock and data
+	*/
+	omap_mux_init_signal("dcan0_rx.i2c3_scl_mux1", TI814X_PULL_UP);
+	omap_mux_init_signal("dcan0_tx.i2c3_sda_mux1", TI814X_PULL_UP);
+	/*
+	*	INT
+	*/
+	omap_mux_init_signal("mmc0_clk.gpio0_1", TI814X_PULL_UP);
+	error = gpio_request(GPIO_TSC_ATT, "tsc_int");
+	if (error < 0) {
+		printk(KERN_ERR "%s: failed to request GPIO for TSC INT"
+			": %d\n", __func__, error);
+		return;
+	}
+        gpio_direction_input(GPIO_TSC_INT);
+        ti814x_i2c_boardinfo4[0].irq = gpio_to_irq(GPIO_TSC_ATT);
+	gpio_export(GPIO_TSC_INT, true);
+
+	/*
+	*	RST
+	*/
+	omap_mux_init_signal("mmc0_cmd.gpio0_2", TI814X_PULL_UP);
+	error = gpio_request(GPIO_TSC_RST, "tsc_rst");
+	if (error < 0) {
+		printk(KERN_ERR "%s: failed to request GPIO for TSC RST"
+			": %d\n", __func__, error);
+		return;
+	}
+        gpio_direction_output(GPIO_TSC_RST, 0);
+	gpio_export(GPIO_TSC_RST, true);
+	
+}
+
 static void __init ti814x_evm_i2c_init(void)
 {
 	/* There are 4 instances of I2C in TI814X but currently only one
@@ -507,6 +576,13 @@ static void __init ti814x_evm_i2c_init(void)
 				ARRAY_SIZE(ti814x_i2c_boardinfo));
 	omap_register_i2c_bus(3, 100, ti814x_i2c_boardinfo1,
 				ARRAY_SIZE(ti814x_i2c_boardinfo1));
+
+	/* 
+	 *	I2C3 TI -> i2c4 kernel
+	 */
+
+	omap_register_i2c_bus(4, 100, ti814x_i2c_boardinfo4,
+				ARRAY_SIZE(ti814x_i2c_boardinfo4));
 }
 
 static u8 ti8148_iis_serializer_direction[] = {
@@ -752,6 +828,7 @@ static void __init ti8148_evm_init(void)
 	ti814x_mux_init(board_mux);
 	omap_serial_init();
 	ti814x_tsc_init();
+	pixcir_tsc_init();
 	ti814x_evm_i2c_init();
 	ti81xx_register_mcasp(0, &ti8148_evm_snd_data);
 
