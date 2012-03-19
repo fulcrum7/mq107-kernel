@@ -52,7 +52,6 @@
 #include "hsmmc.h"
 #include "control.h"
 
-#define GPIO_TSC               31
 
 #ifdef CONFIG_OMAP_MUX
 static struct omap_board_mux board_mux[] __initdata = {
@@ -73,209 +72,7 @@ static struct omap2_hsmmc_info mmc[] = {
 	{}	/* Terminator */
 };
 
-#define GPIO_LCD_PWR_DOWN	0
-
-static int setup_gpio_ioexp(struct i2c_client *client, int gpio_base,
-	 unsigned ngpio, void *context) {
-	int ret = 0;
-	int gpio = gpio_base + GPIO_LCD_PWR_DOWN;
-
-	ret = gpio_request(gpio, "lcd_power");
-	if (ret) {
-		printk(KERN_ERR "%s: failed to request GPIO for LCD Power"
-			": %d\n", __func__, ret);
-		return ret;
-	}
-
-	gpio_export(gpio, true);
-	gpio_direction_output(gpio, 0);
-
-	return 0;
-}
-
-/* IO expander data */
-static struct pcf857x_platform_data io_expander_data = {
-	.gpio_base	= 4 * 32,
-	.setup		= setup_gpio_ioexp,
-};
-static struct i2c_board_info __initdata ti814x_i2c_boardinfo1[] = {
-	{
-		I2C_BOARD_INFO("pcf8575_1", 0x21),
-	},
-
-};
-
-
-
-#define VPS_VC_IO_EXP_RESET_DEV_MASK        (0x0Fu)
-#define VPS_VC_IO_EXP_SEL_VIN0_S1_MASK      (0x04u)
-#define VPS_VC_IO_EXP_THS7368_DISABLE_MASK  (0x10u)
-#define VPS_VC_IO_EXP_THS7368_BYPASS_MASK   (0x20u)
-#define VPS_VC_IO_EXP_THS7368_FILTER1_MASK  (0x40u)
-#define VPS_VC_IO_EXP_THS7368_FILTER2_MASK  (0x80u)
-#define VPS_VC_IO_EXP_THS7368_FILTER_SHIFT  (0x06u)
-
-
-static const struct i2c_device_id pcf8575_video_id[] = {
-	{ "pcf8575_1", 0 },
-	{ }
-};
-static struct i2c_client *pcf8575_client;
-static unsigned char pcf8575_port[2] = {0x4F, 0x7F};
-int vps_ti814x_select_video_decoder(int vid_decoder_id);
-
-static int pcf8575_video_probe(struct i2c_client *client,
-				const struct i2c_device_id *id)
-{
-	pcf8575_client = client;
-	vps_ti814x_select_video_decoder(0);
-	return 0;
-}
-
-static int __devexit pcf8575_video_remove(struct i2c_client *client)
-{
-	pcf8575_client = NULL;
-	return 0;
-}
-
-static struct i2c_driver pcf8575_driver = {
-	.driver = {
-		.name   = "pcf8575_1",
-	},
-	.probe          = pcf8575_video_probe,
-	.remove         = pcf8575_video_remove,
-	.id_table       = pcf8575_video_id,
-};
-
-int ti814x_pcf8575_init(void)
-{
-	i2c_add_driver(&pcf8575_driver);
-	return 0;
-}
-EXPORT_SYMBOL(ti814x_pcf8575_init);
-
-int ti814x_pcf8575_exit(void)
-{
-	i2c_del_driver(&pcf8575_driver);
-	return 0;
-}
-EXPORT_SYMBOL(ti814x_pcf8575_exit);
-#define VPS_VC_IO_EXP_RESET_DEV_MASK        (0x0Fu)
-#define VPS_VC_IO_EXP_SEL_VIN0_S1_MASK      (0x04u)
-#define VPS_VC_IO_EXP_THS7368_DISABLE_MASK  (0x10u)
-#define VPS_VC_IO_EXP_THS7368_BYPASS_MASK   (0x20u)
-#define VPS_VC_IO_EXP_THS7368_FILTER1_MASK  (0x40u)
-#define VPS_VC_IO_EXP_THS7368_FILTER2_MASK  (0x80u)
-#define VPS_VC_IO_EXP_THS7368_FILTER_SHIFT  (0x06u)
-int vps_ti814x_select_video_decoder(int vid_decoder_id)
-{
-	int ret = 0;
-	struct i2c_msg msg = {
-			.addr = pcf8575_client->addr,
-			.flags = 0,
-			.len = 2,
-		};
-	msg.buf = pcf8575_port;
-	if (VPS_SEL_TVP7002_DECODER == vid_decoder_id)
-		pcf8575_port[1] &= ~VPS_VC_IO_EXP_SEL_VIN0_S1_MASK;
-	else
-		pcf8575_port[1] |= VPS_VC_IO_EXP_SEL_VIN0_S1_MASK;
-	ret = (i2c_transfer(pcf8575_client->adapter, &msg, 1));
-	if (ret < 0)
-		printk(KERN_ERR "I2C: Transfer failed at %s %d with error code: %d\n",
-			__func__, __LINE__, ret);
-	return ret;
-}
-EXPORT_SYMBOL(vps_ti814x_select_video_decoder);
-
-#define I2C_RETRY_COUNT 10u
-int vps_ti814x_set_tvp7002_filter(enum fvid2_standard standard)
-{
-	int filter_sel;
-	int ret;
-	struct i2c_msg msg = {
-			.addr = pcf8575_client->addr,
-			.flags = 0,
-			.len = 2,
-		};
-
-	pcf8575_port[0] &= ~(VPS_VC_IO_EXP_THS7368_DISABLE_MASK
-		| VPS_VC_IO_EXP_THS7368_BYPASS_MASK
-		| VPS_VC_IO_EXP_THS7368_FILTER1_MASK
-		| VPS_VC_IO_EXP_THS7368_FILTER2_MASK);
-	switch (standard) {
-	case FVID2_STD_1080P_60:
-	case FVID2_STD_1080P_50:
-	case FVID2_STD_SXGA_60:
-	case FVID2_STD_SXGA_75:
-	case FVID2_STD_SXGAP_60:
-	case FVID2_STD_SXGAP_75:
-	case FVID2_STD_UXGA_60:
-		filter_sel = 0x03u;  /* Filter2: 1, Filter1: 1 */
-		break;
-	case FVID2_STD_1080I_60:
-	case FVID2_STD_1080I_50:
-	case FVID2_STD_1080P_24:
-	case FVID2_STD_1080P_30:
-	case FVID2_STD_720P_60:
-	case FVID2_STD_720P_50:
-	case FVID2_STD_SVGA_60:
-	case FVID2_STD_SVGA_72:
-	case FVID2_STD_SVGA_75:
-	case FVID2_STD_SVGA_85:
-	case FVID2_STD_XGA_60:
-	case FVID2_STD_XGA_70:
-	case FVID2_STD_XGA_75:
-	case FVID2_STD_XGA_85:
-	case FVID2_STD_WXGA_60:
-	case FVID2_STD_WXGA_75:
-	case FVID2_STD_WXGA_85:
-		filter_sel = 0x01u;  /* Filter2: 0, Filter1: 1 */
-		break;
-	case FVID2_STD_480P:
-	case FVID2_STD_576P:
-	case FVID2_STD_VGA_60:
-	case FVID2_STD_VGA_72:
-	case FVID2_STD_VGA_75:
-	case FVID2_STD_VGA_85:
-		filter_sel = 0x02u;  /* Filter2: 1, Filter1: 0 */
-		break;
-	case FVID2_STD_NTSC:
-	case FVID2_STD_PAL:
-	case FVID2_STD_480I:
-	case FVID2_STD_576I:
-	case FVID2_STD_D1:
-		filter_sel = 0x00u;  /* Filter2: 0, Filter1: 0 */
-		break;
-
-	default:
-		filter_sel = 0x01u;  /* Filter2: 0, Filter1: 1 */
-		break;
-	}
-	pcf8575_port[0] |=
-		(filter_sel << VPS_VC_IO_EXP_THS7368_FILTER_SHIFT);
-	msg.buf = pcf8575_port;
-	ret =  (i2c_transfer(pcf8575_client->adapter, &msg, 1));
-	if (ret < 0) {
-		printk(KERN_ERR "I2C: Transfer failed at %s %d with error code: %d\n",
-			__func__, __LINE__, ret);
-		return ret;
-	}
-	return ret;
-}
-EXPORT_SYMBOL(vps_ti814x_set_tvp7002_filter);
-/* Touchscreen platform data */
-static struct qt602240_platform_data ts_platform_data = {
-	.x_line		= 18,
-	.y_line		= 12,
-	.x_size		= 800,
-	.y_size		= 480,
-	.blen		= 0x01,
-	.threshold	= 30,
-	.voltage	= 2800000,
-	.orient		= QT602240_HORIZONTAL_FLIP,
-};
-
+//FIXME eeprom 8kbit
 static struct at24_platform_data eeprom_info = {
 	.byte_len       = (256*1024) / 8,
 	.page_size      = 64,
@@ -450,66 +247,61 @@ static struct tps65910_board __refdata tps65911_pdata = {
 	.tps65910_pmic_init_data	= tps65911_reg_data,
 };
 
-static struct i2c_board_info __initdata ti814x_i2c_boardinfo[] = {
-	{
-		I2C_BOARD_INFO("eeprom", 0x50),
-		.platform_data	= &eeprom_info,
-	},
-	{
-		I2C_BOARD_INFO("cpld", 0x23),
-	},
-	{
+static struct i2c_board_info __initdata ti814x_i2c_boardinfo1[] = {
+	{	/* audio codec */
 		I2C_BOARD_INFO("tlv320aic3x", 0x18),
 	},
-	{
-		I2C_BOARD_INFO("IO Expander", 0x20),
-	},
-	{
-		I2C_BOARD_INFO("tlc59108", 0x40),
-	},
-	{
-		I2C_BOARD_INFO("pcf8575", 0x21),
-		.platform_data = &io_expander_data,
-	},
-	{
-		I2C_BOARD_INFO("qt602240_ts", 0x4A),
-		.platform_data = &ts_platform_data,
-	},
-	{
+	{	/* PMIC */
 		I2C_BOARD_INFO("tps65911", 0x2D),
 		.platform_data = &tps65911_pdata,
 	},
+	{	/* DA converter alarmboard */
+		I2C_BOARD_INFO("DAalarm", 0x30),
+	},
+	{	/* DA converter backlight brightness X3 board */
+		I2C_BOARD_INFO("DAbacklight", 0x31),
+	},
+	{	/* Step down converter */
+		I2C_BOARD_INFO("tps62353", 0x48),
+	},
+	{	/* current monitor */
+		I2C_BOARD_INFO("currentmon", 0x49),
+	},
+	{	/* temperature sensor */
+		I2C_BOARD_INFO("lm75", 0x4a),
+	},
+	{	/* aliases seen on 0x51 0x52 0x53 */
+		I2C_BOARD_INFO("eeprom", 0x50),
+		.platform_data	= &eeprom_info,
+	},
 };
 
-static void __init ti814x_tsc_init(void)
-{
-	int error;
+static struct i2c_board_info __initdata ti814x_i2c_boardinfo2[] = {
+        {       /* VGA DAC */
+                I2C_BOARD_INFO("vga_dac", 0x20),
+        },
+        {       // DDC of VGA monitor 
+                I2C_BOARD_INFO("DDC", 0x50),
+        },
+};
 
-	omap_mux_init_signal("mlb_clk.gpio0_31", TI814X_PULL_DIS | (1 << 18));
+static struct i2c_board_info __initdata ti814x_i2c_boardinfo3[] = {
+        {	/* ambiant light sensor */
+                I2C_BOARD_INFO("als", 0x44),
+        },
+        {	/* touch button controller HOME */
+                I2C_BOARD_INFO("als", 0x68),
+        },
+        {	/* touch button controller ALARM */
+                I2C_BOARD_INFO("als", 0x69),
+        },
 
-	error = gpio_request(GPIO_TSC, "ts_irq");
-	if (error < 0) {
-		printk(KERN_ERR "%s: failed to request GPIO for TSC IRQ"
-			": %d\n", __func__, error);
-		return;
-	}
-
-	gpio_direction_input(GPIO_TSC);
-	ti814x_i2c_boardinfo[6].irq = gpio_to_irq(GPIO_TSC);
-
-	gpio_export(31, true);
-}
-
-
-
-
-
+};
 
 /* Touchscreen platform data */
 
 #include <../../../drivers/input/touchscreen/pixcir_i2c_ts.h>
 
-#define GPIO_TSC               31
 #define GPIO_TSC_ATT	        1
 #define GPIO_TSC_RST	        2
 #define GPIO_TSC_INT	        1
@@ -530,6 +322,70 @@ static struct i2c_board_info __initdata ti814x_i2c_boardinfo4[] = {
 
 };
 
+#define GP_OUT		1
+#define GP_IN		0
+#define GP_USER		1
+#define GP_KERNEL	0
+#define GP_HIGH		1
+#define GP_LOW		0
+
+static void __init gpio_init(int nr, int direction, int level, int user, const char *name)
+{
+        /* if input level is not used (irrelevant) */
+	int error;
+
+        error = gpio_request(nr, name);
+        if (error < 0) {
+                printk(KERN_ERR "%s: failed to request GPIO"
+                        ": %d\n", __func__, error);
+        } else {
+                if (direction == GP_OUT)
+        		gpio_direction_output(nr, level);
+                if (direction == GP_IN)
+        		gpio_direction_input(nr);
+                if (user == GP_USER)
+        		gpio_export(nr, true);
+                if (user == GP_KERNEL)
+        		gpio_export(nr, false);
+	}
+
+}
+
+static void __init gpios_mq(void)
+{
+        /* names are netnames from schematic */
+	gpio_init( 1, GP_IN,  GP_IN,   GP_USER, "TC_ATTn");
+	gpio_init( 2, GP_OUT, GP_LOW,  GP_USER, "RESET_TC");	//out of reset
+	gpio_init( 3, GP_OUT, GP_HIGH, GP_USER, "RESET_TBC1n"); //out of reset
+	gpio_init( 4, GP_IN,  GP_IN,   GP_USER, "TOUCHBT_TINT");
+	gpio_init( 5, GP_IN,  GP_IN,   GP_USER, "TBC_INT");
+	gpio_init( 6, GP_OUT, GP_HIGH, GP_USER, "RESET_TBC2n"); //out of reset
+	gpio_init( 8, GP_IN,  GP_IN,   GP_USER, "TOUCHBT_GINT");
+	gpio_init( 9, GP_IN,  GP_IN,   GP_USER, "TBC_INTG");
+	gpio_init(14, GP_IN,  GP_IN,   GP_USER, "ALED_FAULTn");
+	gpio_init(15, GP_OUT, GP_LOW,  GP_USER, "ALED_EN");
+	gpio_init(16, GP_OUT, GP_HIGH, GP_USER, "SW_Y_ONn");
+	gpio_init(17, GP_OUT, GP_HIGH, GP_USER, "SW_RD_ONn");
+	gpio_init(18, GP_OUT, GP_HIGH, GP_USER, "SW_BL_ONn");
+	gpio_init(19, GP_IN,  GP_IN,   GP_USER, "OVERTEMPn");
+	gpio_init(20, GP_IN,  GP_IN,   GP_USER, "mSATA_PRESENTn");
+	gpio_init(21, GP_IN,  GP_IN,   GP_USER, "LAN_IRQn");
+	gpio_init(22, GP_IN,  GP_IN,   GP_USER, "SW_WP");
+	gpio_init(23, GP_IN,  GP_IN,   GP_USER, "IRQ_ALS");
+	gpio_init(24, GP_OUT, GP_HIGH, GP_USER, "LVDS_VDDENA"); //enable LVDS
+	gpio_init(25, GP_OUT, GP_HIGH, GP_USER, "SHTDN_LVDSn"); //enable LVDS
+	gpio_init(26, GP_OUT, GP_HIGH, GP_USER, "WDOG_TRIG");
+	gpio_init(27, GP_OUT, GP_LOW,  GP_USER, "PWR_EN_TCn");
+	gpio_init(28, GP_OUT, GP_LOW,  GP_USER, "WDOG_DISABLE");
+	gpio_init(29, GP_OUT, GP_HIGH, GP_USER, "AUD_AMP_SHDNn");
+	gpio_init(30, GP_IN,  GP_IN,   GP_USER, "BOOT_EN_FBn");
+	gpio_init(31, GP_OUT, GP_LOW,  GP_USER, "BOOTEN_INT");
+	gpio_init(51, GP_OUT, GP_HIGH, GP_USER, "USB[0]_EN");
+	gpio_init(52, GP_OUT, GP_HIGH, GP_USER, "USB[1]_EN");
+	gpio_init(53, GP_OUT, GP_HIGH, GP_USER, "LAN_RST_EN");
+}
+
+#if 0
 static void __init pixcir_tsc_init(void)
 {
 	int error;
@@ -566,21 +422,23 @@ static void __init pixcir_tsc_init(void)
 	gpio_export(GPIO_TSC_RST, true);
 	
 }
+#endif
+
+static void __init pixcir_tsc_init(void)
+{
+        ti814x_i2c_boardinfo4[0].irq = gpio_to_irq(GPIO_TSC_ATT);
+}
 
 static void __init ti814x_evm_i2c_init(void)
 {
-	/* There are 4 instances of I2C in TI814X but currently only one
-	 * instance is being used on the TI8148 EVM
-	 */
-	omap_register_i2c_bus(1, 100, ti814x_i2c_boardinfo,
-				ARRAY_SIZE(ti814x_i2c_boardinfo));
-	omap_register_i2c_bus(3, 100, ti814x_i2c_boardinfo1,
+	omap_register_i2c_bus(1, 100, ti814x_i2c_boardinfo1,
 				ARRAY_SIZE(ti814x_i2c_boardinfo1));
-
-	/* 
-	 *	I2C3 TI -> i2c4 kernel
-	 */
-
+        /* // this bus is used by cortex M3 for hdmi; do not use
+	omap_register_i2c_bus(2, 100, ti814x_i2c_boardinfo2,
+				ARRAY_SIZE(ti814x_i2c_boardinfo2));
+        */
+	omap_register_i2c_bus(3, 100, ti814x_i2c_boardinfo3,
+				ARRAY_SIZE(ti814x_i2c_boardinfo3));
 	omap_register_i2c_bus(4, 100, ti814x_i2c_boardinfo4,
 				ARRAY_SIZE(ti814x_i2c_boardinfo4));
 }
@@ -825,9 +683,10 @@ static void __init ti8148_evm_init(void)
 {
 	int bw; /* bus-width */
 
-	ti814x_mux_init(board_mux);
+	//ti814x_mux_init(board_mux);
 	omap_serial_init();
-	ti814x_tsc_init();
+	//ti814x_tsc_init();
+	gpios_mq();
 	pixcir_tsc_init();
 	ti814x_evm_i2c_init();
 	ti81xx_register_mcasp(0, &ti8148_evm_snd_data);

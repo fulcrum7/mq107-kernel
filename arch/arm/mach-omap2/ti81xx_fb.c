@@ -198,7 +198,8 @@ static struct ti81xxvin_config ti81xx_hsvpss_capture_cfg = {
 	.card_name = ti81xx_card_name,
 	.inst_config[0] = {
 		.inputs = hdvpss_inst0_inputs,
-		.input_count = ARRAY_SIZE(hdvpss_inst0_inputs),
+		.input_count = 0,
+		//.input_count = ARRAY_SIZE(hdvpss_inst0_inputs),
 	},
 	.inst_config[1] = {
 		.inputs = hdvpss_inst0_inputs,
@@ -206,7 +207,8 @@ static struct ti81xxvin_config ti81xx_hsvpss_capture_cfg = {
 	},
 	.inst_config[2] = {
 		.inputs = hdvpss_inst1_inputs,
-		.input_count = ARRAY_SIZE(hdvpss_inst1_inputs),
+		.input_count = 0,
+		//.input_count = ARRAY_SIZE(hdvpss_inst1_inputs),
 	},
 	.inst_config[3] = {
 		.inputs = hdvpss_inst1_inputs,
@@ -266,9 +268,9 @@ static inline int ti81xx_init_fb(void)
 	hdvpss_capture_dev.dev.platform_data = &ti81xx_hsvpss_capture_cfg;
 	if (cpu_is_ti814x()) {
 		hdvpss_capture_sdev_info[0].ti81xxvin_select_decoder =
-			vps_ti814x_select_video_decoder;
+			NULL;
 		hdvpss_capture_sdev_info[0].ti81xxvin_set_mode =
-			vps_ti814x_set_tvp7002_filter;
+			NULL;
 		hdvpss_capture_sdev_info[0].decoder_id = 0;
 		hdvpss_capture_sdev_info[1].ti81xxvin_select_decoder =
 			NULL;
