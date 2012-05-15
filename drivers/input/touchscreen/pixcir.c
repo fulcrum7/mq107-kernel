@@ -130,6 +130,13 @@ struct pixcir_i2c_ts_data {
 	bool exiting;
 };
 
+
+/*	Point data status	*/
+
+#define PXR_USED		(1 << 1)
+#define PXR_UNUSED		!PXR_USED
+
+
 struct point_data{
 	unsigned char	brn;  //broken line number
 	unsigned char	brn_pre;
@@ -137,10 +144,30 @@ struct point_data{
 	unsigned int	posx;
 	unsigned int	posy;
 	unsigned char   strg;
+	unsigned char status;
 	
 };
 
+
+
 static struct point_data point[5];
+
+static struct slot_element{
+	unsigned char id;
+	unsigned char status;
+	struct point_data *data;
+
+};
+
+static struct slot_element slot[5];
+
+
+/*	Slot status	*/
+
+
+#define PXR_ACTIVE		1
+#define PXR_EMPTY		(1 << 2)
+#define PXR_RELEASE		(1 << 1)
 
 static void pixcir_ts_poscheck(struct pixcir_i2c_ts_data *data)
 {
@@ -149,7 +176,9 @@ static void pixcir_ts_poscheck(struct pixcir_i2c_ts_data *data)
 	unsigned char *p;
 	unsigned char touch, button;
 	unsigned char rdbuf[32], wrbuf[1] = { 0 };
-	int ret, i;
+	int ret, i, j;
+	int nslot;
+
 
 	ret = i2c_master_send(tsdata->client, wrbuf, sizeof(wrbuf));
 	if (ret != sizeof(wrbuf)) {
@@ -173,68 +202,88 @@ static void pixcir_ts_poscheck(struct pixcir_i2c_ts_data *data)
 	for (i=0; i<touch; i++)	{
 		point[i].brn = (*(p+4))>>3;		//broken line
 		point[i].id = (*(p+4))&0x7;		//finger_id[i] = (*(p+4));
-		point[i].posx = (((*(p+1)<<8))+(*(p)))>>4;	//posx[i] = (*(p+1)<<8)+(*(p));
-		point[i].posy = ((*(p+3)<<8)+(*(p+2)))>>4;//posy[i] = (*(p+3)<<8)+(*(p+2));
+		point[i].posx = (((*(p+1)<<8))+(*(p)));	//posx[i] = (*(p+1)<<8)+(*(p));
+		point[i].posy = ((*(p+3)<<8)+(*(p+2)));//posy[i] = (*(p+3)<<8)+(*(p+2));
 		point[i].strg = *(rdbuf + 27 + i);
 		p+=5;
+		point[i].status = PXR_UNUSED;
 	}
 
-	#ifdef BUTTON
-	if(button) {
-		switch(button) {
-			case 1:
-				input_report_key(tsdata->input, BTN_MENU, 1);
-			case 2:
-				//add other key down report
-			case 4:
 
-			case 8:
 
-			case 16:
-			case 32:
-			case 64:
-			case 128:
+
+
+
+		/*	Looking for data updates 	*/
+		for(j = 0; j < touch; j++)
+		{
+
+				i = point[j].id;
+				if (i > 4)
+				{
+					printk("ACHTUNG!");
+					continue;
+
+				}
+				slot[i].data = &point[j];
+				slot[i].status = PXR_ACTIVE;
+				point[j].status = PXR_USED;
+				
+
 		}
-	} else {
-		input_report_key(tsdata->input, BTN_MENU, 0);
-		//add other key up report
+#if 0
+	printk("************************New chunk of data****************\n");
+	for(i = 0; i < 5; i++)
+	{
+		printk("SLOT N = %d id = %d STATUS = %0X\n", i, slot[i].id, slot[i].status);
+
+
 	}
-	#endif
+	
+#endif
 
-	if(touch == 1 && (point[0].brn != point[0].brn_pre)) {
-			//printk("**************************** SINGLE TOUCH ********************************\n");
-		input_report_key(tsdata->input, BTN_TOUCH, 1);
-		input_report_abs(tsdata->input, ABS_X, point[0].posx);
-		input_report_abs(tsdata->input, ABS_Y, point[0].posy);
+	/*
+	 *	Here slot table should be ready 
+	 */
 
-	} else {
-		if (touch) { 
-			//printk("**************************** MULTI TOUCH ********************************\n");
-			input_report_key(tsdata->input, BTN_TOUCH, 1);
-			input_report_key(tsdata->input, BTN_LEFT, 1);
-			input_report_abs(tsdata->input, ABS_X, point[0].posx);
+
+
+	for(nslot = 0; nslot < 5; nslot++) {
+
+		if(slot[nslot].status & PXR_EMPTY)
+			continue;
+		
+
+		if(slot[nslot].status & PXR_ACTIVE)
+		{
+
+			input_mt_slot(tsdata->input, nslot);
+			input_event(tsdata->input, EV_ABS, ABS_MT_TRACKING_ID, slot[nslot].id);
+			input_report_abs(tsdata->input, ABS_MT_TOUCH_MAJOR, 7);
+
+			input_report_abs(tsdata->input, ABS_MT_POSITION_X,  slot[nslot].data->posx);
+			input_report_abs(tsdata->input, ABS_MT_POSITION_Y, slot[nslot].data->posy);
+			slot[nslot].status &= ~PXR_ACTIVE;	
+
+		}
+		else
+		{
+			input_mt_slot(tsdata->input, nslot);
+			input_event(tsdata->input, EV_ABS, ABS_MT_TRACKING_ID, -1);
+			slot[nslot].status = PXR_EMPTY;	
+
+		}
+					
+			 
+	}
+
+	input_report_key(tsdata->input, BTN_TOUCH, touch > 0);	
+	if(touch > 0){
+    			input_report_abs(tsdata->input, ABS_X, point[0].posx);
 			input_report_abs(tsdata->input, ABS_Y, point[0].posy);
+	}	
 
-			for(i=0; i<touch; i++) {
-				//if(point[i].brn != point[i].brn_pre) {
-				//	continue;
-				//} else {
-
-
-					input_report_abs(tsdata->input, ABS_MT_TOUCH_MAJOR, 7);
-					input_report_abs(tsdata->input, ABS_MT_POSITION_X, point[i].posx);
-					input_report_abs(tsdata->input, ABS_MT_POSITION_Y, point[i].posy);
-					input_mt_sync(tsdata->input);
-					//printk("brn%d=%2d id%d=%1d x=%5d y=%5d strength=%d \n",
-						//i,point[i].brn,i,point[i].id,point[i].posx,point[i].posy,point[i].strg);
-				//}			
-			}	
-
-		} else {
-			input_report_key(tsdata->input, BTN_TOUCH, 0);
-		}
-
-	}
+	
 	input_sync(tsdata->input);
 	for(i=0;i<touch;i++)
 		point[i].brn_pre = point[i].brn;
@@ -253,9 +302,9 @@ static irqreturn_t pixcir_ts_isr(int irq, void *dev_id)
 				//add other key up report
 			#endif
 			//printk("**************************** AGAIN ********************************\n");
-			input_mt_sync(tsdata->input);
+			//input_mt_sync(tsdata->input);
 			//input_report_abs(tsdata->input, ABS_MT_TOUCH_MAJOR, 0);
-			input_sync(tsdata->input);
+			//input_sync(tsdata->input);
 			break;
 	        }
 		msleep(1);
@@ -298,6 +347,7 @@ static int __devinit pixcir_i2c_ts_probe(struct i2c_client *client,
 	struct device *dev;
 	struct i2c_dev *i2c_dev;
 	int error;
+	int i;
 
 	//if (!pdata) {
 	//	dev_err(&client->dev, "platform data not defined\n");
@@ -325,7 +375,7 @@ static int __devinit pixcir_i2c_ts_probe(struct i2c_client *client,
 	__set_bit(EV_ABS, input->evbit);
 	__set_bit(EV_SYN, input->evbit);
 	__set_bit(BTN_TOUCH, input->keybit);
-	__set_bit(BTN_LEFT, input->keybit);
+	//_set_bit(BTN_LEFT, input->keybit);
 
 	/* For single touch */
 
@@ -335,11 +385,20 @@ static int __devinit pixcir_i2c_ts_probe(struct i2c_client *client,
 
 	/* For multi-touch */
 	//input_mt_init_slots(input, 5); // TODO: change to constant
-	//input_mt_create_slots(input, 5);
-	//input_set_abs_params(input, ABS_MT_TRACKING_ID,0, 100, 0, 0);
+	input_mt_create_slots(input, 5);
+	input_set_abs_params(input, ABS_MT_TRACKING_ID,0, 100, 0, 0);
 	input_set_abs_params(input, ABS_MT_POSITION_X, 0, X_MAX, 0, 0);
 	input_set_abs_params(input, ABS_MT_POSITION_Y, 0, Y_MAX, 0, 0);
 	input_set_abs_params(input, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
+
+
+	for(i = 0; i < 5; i++)
+	{
+		slot[i].id = i;
+		slot[i].status = PXR_EMPTY;
+		slot[i].data = NULL;
+
+	}
 
 
 	//TODO: smth with pressure and major should be added
@@ -728,7 +787,7 @@ static int __init pixcir_i2c_ts_init(void)
 {
 	int ret;
 
-printk(" pixcir_i2c_ts_init \n");
+printk(" pixcir_i2c_ts_init version \n");
 
 	/*********************************Bee-0928-TOP****************************************/
 	ret = register_chrdev(I2C_MAJOR,"pixcir_i2c_ts_chdev",&pixcir_i2c_ts_fops);
@@ -761,4 +820,25 @@ module_exit(pixcir_i2c_ts_exit);
 
 
 MODULE_LICENSE("GPL");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

@@ -290,10 +290,10 @@ static struct i2c_board_info __initdata ti814x_i2c_boardinfo3[] = {
                 I2C_BOARD_INFO("als", 0x44),
         },
         {	/* touch button controller HOME */
-                I2C_BOARD_INFO("als", 0x68),
+                I2C_BOARD_INFO("fma_home_btn", 0x68),
         },
         {	/* touch button controller ALARM */
-                I2C_BOARD_INFO("als", 0x69),
+                I2C_BOARD_INFO("fma_alarm_btn", 0x69),
         },
 
 };
@@ -307,8 +307,8 @@ static struct i2c_board_info __initdata ti814x_i2c_boardinfo3[] = {
 #define GPIO_TSC_INT	        1
 
 static struct pixcir_i2c_ts_platform pixcir_platform_data = {
-	.ts_x_max	  = 800,				//FIXME
-	.ts_y_max	  = 480,				//FIXME
+	.ts_x_max	  = 1024,
+	.ts_y_max	  = 768,
 };
 
 static struct i2c_board_info __initdata ti814x_i2c_boardinfo4[] = {
