@@ -209,84 +209,26 @@ static void pixcir_ts_poscheck(struct pixcir_i2c_ts_data *data)
 		point[i].status = PXR_UNUSED;
 	}
 
+	if(touch){
 
 
-
-
-
-		/*	Looking for data updates 	*/
+		input_report_key(tsdata->input, BTN_TOUCH, 1);
+		input_report_abs(tsdata->input, ABS_X, point[0].posx);
+		input_report_abs(tsdata->input, ABS_Y, point[0].posy);
 		for(j = 0; j < touch; j++)
 		{
-
-				i = point[j].id;
-				if (i > 4)
-				{
-					printk("ACHTUNG!");
-					continue;
-
-				}
-				slot[i].data = &point[j];
-				slot[i].status = PXR_ACTIVE;
-				point[j].status = PXR_USED;
-				
-
+			input_report_abs(tsdata->input, ABS_MT_POSITION_X, point[j].posx);
+			input_report_abs(tsdata->input, ABS_MT_POSITION_Y, point[j].posy);
+			input_mt_sync(tsdata->input);
 		}
-#if 0
-	printk("************************New chunk of data****************\n");
-	for(i = 0; i < 5; i++)
-	{
-		printk("SLOT N = %d id = %d STATUS = %0X\n", i, slot[i].id, slot[i].status);
+	} else {
 
-
-	}
-	
-#endif
-
-	/*
-	 *	Here slot table should be ready 
-	 */
-
-
-
-	for(nslot = 0; nslot < 5; nslot++) {
-
-		if(slot[nslot].status & PXR_EMPTY)
-			continue;
-		
-
-		if(slot[nslot].status & PXR_ACTIVE)
-		{
-
-			input_mt_slot(tsdata->input, nslot);
-			input_event(tsdata->input, EV_ABS, ABS_MT_TRACKING_ID, slot[nslot].id);
-			input_report_abs(tsdata->input, ABS_MT_TOUCH_MAJOR, 7);
-
-			input_report_abs(tsdata->input, ABS_MT_POSITION_X,  slot[nslot].data->posx);
-			input_report_abs(tsdata->input, ABS_MT_POSITION_Y, slot[nslot].data->posy);
-			slot[nslot].status &= ~PXR_ACTIVE;	
-
-		}
-		else
-		{
-			input_mt_slot(tsdata->input, nslot);
-			input_event(tsdata->input, EV_ABS, ABS_MT_TRACKING_ID, -1);
-			slot[nslot].status = PXR_EMPTY;	
-
-		}
-					
-			 
+		input_report_key(tsdata->input, BTN_TOUCH, 0);
 	}
 
-	input_report_key(tsdata->input, BTN_TOUCH, touch > 0);	
-	if(touch > 0){
-    			input_report_abs(tsdata->input, ABS_X, point[0].posx);
-			input_report_abs(tsdata->input, ABS_Y, point[0].posy);
-	}	
-
-	
 	input_sync(tsdata->input);
-	for(i=0;i<touch;i++)
-		point[i].brn_pre = point[i].brn;
+
+
 }
 
 static irqreturn_t pixcir_ts_isr(int irq, void *dev_id)
@@ -297,17 +239,9 @@ static irqreturn_t pixcir_ts_isr(int irq, void *dev_id)
 		pixcir_ts_poscheck(tsdata);
 
 		if (attb_read_val()) {
-			#ifdef BUTTON
-				input_report_key(tsdata->input, BTN_MENU, 0);
-				//add other key up report
-			#endif
-			//printk("**************************** AGAIN ********************************\n");
-			//input_mt_sync(tsdata->input);
-			//input_report_abs(tsdata->input, ABS_MT_TOUCH_MAJOR, 0);
-			//input_sync(tsdata->input);
 			break;
 	        }
-		msleep(1);
+		msleep(20);
 	}
 	return IRQ_HANDLED;
 }
@@ -341,7 +275,7 @@ static int __devinit pixcir_i2c_ts_probe(struct i2c_client *client,
 					 const struct i2c_device_id *id)
 {
 	//const struct pixcir_ts_platform_data *pdata = client->dev.platform_data;
-	printk("i2c Probe is called!\n");
+	printk("i2c Probe is called! Type A debug stuck mouse\n");
 	struct pixcir_i2c_ts_data *tsdata;
 	struct input_dev *input;
 	struct device *dev;
@@ -373,7 +307,7 @@ static int __devinit pixcir_i2c_ts_probe(struct i2c_client *client,
 
 	__set_bit(EV_KEY, input->evbit);
 	__set_bit(EV_ABS, input->evbit);
-	__set_bit(EV_SYN, input->evbit);
+	//__set_bit(EV_SYN, input->evbit);
 	__set_bit(BTN_TOUCH, input->keybit);
 	//_set_bit(BTN_LEFT, input->keybit);
 
@@ -385,11 +319,11 @@ static int __devinit pixcir_i2c_ts_probe(struct i2c_client *client,
 
 	/* For multi-touch */
 	//input_mt_init_slots(input, 5); // TODO: change to constant
-	input_mt_create_slots(input, 5);
-	input_set_abs_params(input, ABS_MT_TRACKING_ID,0, 100, 0, 0);
+	//input_mt_create_slots(input, 5);
+	//input_set_abs_params(input, ABS_MT_TRACKING_ID,0, 100, 0, 0);
 	input_set_abs_params(input, ABS_MT_POSITION_X, 0, X_MAX, 0, 0);
 	input_set_abs_params(input, ABS_MT_POSITION_Y, 0, Y_MAX, 0, 0);
-	input_set_abs_params(input, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
+	//input_set_abs_params(input, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
 
 
 	for(i = 0; i < 5; i++)
@@ -820,6 +754,7 @@ module_exit(pixcir_i2c_ts_exit);
 
 
 MODULE_LICENSE("GPL");
+
 
 
 
