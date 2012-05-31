@@ -306,9 +306,25 @@ static struct i2c_board_info __initdata ti814x_i2c_boardinfo3[] = {
 #define GPIO_TSC_RST	        2
 #define GPIO_TSC_INT	        1
 
-static struct pixcir_i2c_ts_platform pixcir_platform_data = {
+static int chip_reset(void)
+{
+	gpio_direction_output(GPIO_TSC_RST,1);
+	mdelay(10);
+	gpio_direction_output(GPIO_TSC_RST,0);
+	return 0;
+}
+
+static int chip_get_val(void)
+{
+	return	gpio_get_value(GPIO_TSC_ATT);
+}
+
+
+static struct pixcir_ts_platform_data pixcir_platform_data = {
 	.ts_x_max	  = 1024,
 	.ts_y_max	  = 768,
+ 	.tango_chip_reset = chip_reset,
+ 	.attb_read_val = chip_get_val,
 };
 
 static struct i2c_board_info __initdata ti814x_i2c_boardinfo4[] = {
