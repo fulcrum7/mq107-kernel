@@ -265,7 +265,7 @@ static struct i2c_board_info __initdata ti814x_i2c_boardinfo1[] = {
 		I2C_BOARD_INFO("tps62353", 0x48),
 	},
 	{	/* current monitor */
-		I2C_BOARD_INFO("currentmon", 0x49),
+		I2C_BOARD_INFO("ads7828", 0x49),
 	},
 	{	/* temperature sensor */
 		I2C_BOARD_INFO("lm75", 0x4a),
@@ -285,9 +285,21 @@ static struct i2c_board_info __initdata ti814x_i2c_boardinfo2[] = {
         },
 };
 
+/* Ambient light platform data */
+#include <../../../drivers/input/misc/isl29023.h>
+
+#define GPIO_ALS_INT 23
+static struct isl29023_platform_data isl29023_platform_data = {
+//.*vdd_reg;
+	.rext = 499, //????
+	.polled = 0,
+	.poll_interval = 1,
+};
+
 static struct i2c_board_info __initdata ti814x_i2c_boardinfo3[] = {
         {	/* ambiant light sensor */
-                I2C_BOARD_INFO("als", 0x44),
+                I2C_BOARD_INFO("isl29023", 0x44),
+		.platform_data = &isl29023_platform_data,
         },
         {	/* touch button controller HOME */
                 I2C_BOARD_INFO("fma_home_btn", 0x68),
@@ -427,6 +439,11 @@ static void __init pixcir_tsc_init(void)
 static void __init pixcir_tsc_init(void)
 {
         ti814x_i2c_boardinfo4[0].irq = gpio_to_irq(GPIO_TSC_ATT);
+}
+
+
+static void __init isl29023_init(void) {
+	ti814x_i2c_boardinfo30.irq = gpio_to_irq(GPIO_ALS_INT);
 }
 
 static void __init ti814x_evm_i2c_init(void)
@@ -688,6 +705,7 @@ static void __init ti8148_evm_init(void)
 	//ti814x_tsc_init();
 	gpios_mq();
 	pixcir_tsc_init();
+	isl29023_init();
 	ti814x_evm_i2c_init();
 	ti81xx_register_mcasp(0, &ti8148_evm_snd_data);
 

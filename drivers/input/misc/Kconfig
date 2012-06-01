@@ -22,6 +22,13 @@ config INPUT_88PM860X_ONKEY
 	  To compile this driver as a module, choose M here: the module
 	  will be called 88pm860x_onkey.
 
+config INPUT_ISL29023
+	tristate "Intersil ISL29023 ambient light sensor"
+	depends on I2C && SYSFS
+	help
+	  If you say yes here you get support for the Intersil ISL29023
+	  ambient light sensor.
+
 config INPUT_AB8500_PONKEY
 	tristate "AB8500 Pon (PowerOn) Key"
 	depends on AB8500_CORE
