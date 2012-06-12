@@ -310,6 +310,52 @@ static struct i2c_board_info __initdata ti814x_i2c_boardinfo3[] = {
 
 };
 
+/* Watchdog platform data */
+
+#include <../../../drivers/watchdog/max16058_wdt.h>
+#include <linux/sched.h>
+#if 0
+#define SET_DATAOUT
+#define CLEAR_DATAOUT
+#define OUTPUT_ENABLE
+#endif
+#define OMAP4_GPIO_SETDATAOUT		0x0194
+#define OMAP4_GPIO_CLEARDATAOUT		0x0190
+#define OMAP4_GPIO_OE			0x0134
+
+
+static void hw_watchdog_reset(void)
+{
+	/* trigger watchdog */
+	__raw_writel(BIT(26), TI81XX_GPIO0_BASE + OMAP4_GPIO_SETDATAOUT);
+	schedule_timeout_uninterruptible(1);
+	__raw_writel(BIT(26), TI81XX_GPIO0_BASE + OMAP4_GPIO_CLEARDATAOUT);
+}
+
+static void hw_watchdog_init(void)
+{
+        unsigned int value;
+	__raw_writel(BIT(26), TI81XX_GPIO0_BASE + OMAP4_GPIO_CLEARDATAOUT);
+        value = __raw_readl(TI81XX_GPIO0_BASE + OMAP4_GPIO_OE);
+        value &= ~BIT(26);
+        __raw_writel(value, TI81XX_GPIO0_BASE + OMAP4_GPIO_OE);
+}
+
+static struct max_wgt_platform_data wgt_platform_data = {
+	.init_method = hw_watchdog_init,
+	.reset_method = hw_watchdog_reset,
+};
+
+
+static struct platform_device max16058_wgt_device = {
+	.name	= "max16058_wdt",
+	.id	= -1,
+	.dev	= {
+		.platform_data	= &wgt_platform_data,
+	},
+};
+
+
 /* Touchscreen platform data */
 
 #include <../../../drivers/input/touchscreen/pixcir_i2c_ts.h>
@@ -443,7 +489,7 @@ static void __init pixcir_tsc_init(void)
 
 
 static void __init isl29023_init(void) {
-	ti814x_i2c_boardinfo30.irq = gpio_to_irq(GPIO_ALS_INT);
+	ti814x_i2c_boardinfo3[0].irq = gpio_to_irq(GPIO_ALS_INT);
 }
 
 static void __init ti814x_evm_i2c_init(void)
@@ -680,11 +726,17 @@ static struct platform_device ti8148_hdmi_codec_device = {
 	.id     = -1,
 };
 
+
+#endif
+
 static struct platform_device *ti8148_devices[] __initdata = {
+#ifdef CONFIG_SND_SOC_TI81XX_HDMI
 	&ti8148_hdmi_audio_device,
 	&ti8148_hdmi_codec_device,
-};
 #endif
+	&max16058_wgt_device,
+};
+
 
 static void __init ti814x_hdmi_init(void)
 {
@@ -699,7 +751,13 @@ static void __init ti814x_hdmi_init(void)
 static void __init ti8148_evm_init(void)
 {
 	int bw; /* bus-width */
-
+ 	struct timespec val;
+	//jiffies_to_timespec(jiffies, 
+	jiffies_to_timespec(jiffies, &val);
+	printk("Jiffies = %lu\n", jiffies);
+	msleep(1000);
+	printk("Val sec=%u nsec=%lu \n", val.tv_sec, val.tv_nsec);	
+	//mq107_wdt_early_start();
 	//ti814x_mux_init(board_mux);
 	omap_serial_init();
 	//ti814x_tsc_init();
@@ -731,9 +789,7 @@ static void __init ti8148_evm_init(void)
 	ti8148_spi_init();
 	ti814x_vpss_init();
 	ti814x_hdmi_init();
-#ifdef CONFIG_SND_SOC_TI81XX_HDMI
 	platform_add_devices(ti8148_devices, ARRAY_SIZE(ti8148_devices));
-#endif
 	regulator_use_dummy_regulator();
 	board_nor_init(ti814x_evm_norflash_partitions,
 		ARRAY_SIZE(ti814x_evm_norflash_partitions), 0);
@@ -754,3 +810,24 @@ MACHINE_START(TI8148EVM, "ti8148evm")
 	.init_machine	= ti8148_evm_init,
 	.timer		= &omap_timer,
 MACHINE_END
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
