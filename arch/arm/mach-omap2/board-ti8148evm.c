@@ -769,6 +769,10 @@ static void __init ti8148_evm_init(void)
 
 	omap2_hsmmc_init(mmc);
 
+
+	/* We don't have NAND in MQ-107 [candidate for removing]*/
+
+#if 0
 	/* nand initialisation */
 	if (cpu_is_ti814x()) {
 		u32 *control_status = TI81XX_CTRL_REGADDR(0x40);
@@ -783,6 +787,8 @@ static void __init ti8148_evm_init(void)
 		board_nand_init(ti814x_nand_partitions,
 		ARRAY_SIZE(ti814x_nand_partitions), 0, NAND_BUSWIDTH_16);
 
+
+#endif
 	/* initialize usb */
 	usb_musb_init(&musb_board_data);
 
