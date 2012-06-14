@@ -77,6 +77,7 @@ __init board_nor_init(struct mtd_partition *nor_parts, u8 nr_parts, u8 cs)
 		pr_err("NOR: Can't request GPMC CS\n");
 		return;
 	}
+	printk("Ready to register NOR\n");
 	if (platform_device_register(&board_nor_device) < 0)
 		pr_err("Unable to register NOR device\n");
 }

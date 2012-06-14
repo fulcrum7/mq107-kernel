@@ -533,7 +533,7 @@ static struct mtd_partition ti814x_evm_norflash_partitions[] = {
 		.name		= "bootloader",
 		.offset		= 0,
 		.size		= 2 * SZ_128K,
-		.mask_flags	= MTD_WRITEABLE, /* force read-only */
+		.mask_flags	= 0, 
 	},
 	/* bootloader params in the next 1 sectors */
 	{
@@ -754,7 +754,7 @@ static void __init ti8148_evm_init(void)
  	struct timespec val;
 	//jiffies_to_timespec(jiffies, 
 	jiffies_to_timespec(jiffies, &val);
-	printk("Jiffies = %lu\n", jiffies);
+	printk("Newest MTD! Jiffies = %lu\n", jiffies);
 	msleep(1000);
 	printk("Val sec=%u nsec=%lu \n", val.tv_sec, val.tv_nsec);	
 	//mq107_wdt_early_start();
@@ -792,11 +792,12 @@ static void __init ti8148_evm_init(void)
 	/* initialize usb */
 	usb_musb_init(&musb_board_data);
 
-	ti8148_spi_init();
+	//ti8148_spi_init();
 	ti814x_vpss_init();
 	ti814x_hdmi_init();
 	platform_add_devices(ti8148_devices, ARRAY_SIZE(ti8148_devices));
 	regulator_use_dummy_regulator();
+	printk("Before board init\n");
 	board_nor_init(ti814x_evm_norflash_partitions,
 		ARRAY_SIZE(ti814x_evm_norflash_partitions), 0);
 }

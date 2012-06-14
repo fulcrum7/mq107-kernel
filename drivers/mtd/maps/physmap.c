@@ -90,7 +90,7 @@ static int physmap_flash_probe(struct platform_device *dev)
 	int err = 0;
 	int i;
 	int devices_found = 0;
-
+		printk("PROBE is called NOR\n");
 	physmap_data = dev->dev.platform_data;
 	if (physmap_data == NULL)
 		return -ENODEV;
