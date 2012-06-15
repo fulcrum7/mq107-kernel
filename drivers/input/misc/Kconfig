@@ -459,12 +459,12 @@ config INPUT_FMA_BUTTON_HOME
 	tristate "MQ-107 home button"
 	default y
 	help
-	  MQ-107 home button
+	  MQ-107 home button (char dev)
 
 config INPUT_FMA_BUTTON_ALARM
 	tristate "MQ-107 alarm button"
 	default y
 	help
-	  MQ-107 alarm button
+	  MQ-107 alarm button (char dev)
 
 endif

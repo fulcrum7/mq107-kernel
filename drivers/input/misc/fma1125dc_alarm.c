@@ -210,7 +210,7 @@ static int __devinit fma1125dc_i2c_probe(struct i2c_client *client,
 
 	fma1125dc_i2c_write(fma_dev,FMA1125_PA_CONF,0x00);
 
-	printk("FMA button is configured\n");
+	printk("FMA  ALARM button is configured\n");
 
 
 	/*
